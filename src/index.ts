@@ -3,44 +3,48 @@ import { HarnessEngine } from "./core/engine";
 import type { TaskRunner, TestCase } from "./core/types";
 import { ConsoleReporter } from "./reporters/console";
 
-const dummyRunner: TaskRunner<{ payload: string }, { result: string }> = {
-  name: "Dummy Processing Runner",
+const asyncRunner: TaskRunner<
+  { id: number; delayMs: number },
+  { ok: boolean }
+> = {
+  name: "Async Task Runner",
   execute: async (input) => {
-    await new Promise((resolve) => setTimeout(resolve, 1000)); // Simulate async processing
+    // Simula una tarea asíncrona de I/O o red
+    await new Promise((resolve) => setTimeout(resolve, input.delayMs));
 
-    if (input.payload === "error") {
-      throw new Error("Simulated processing failure!");
+    if (input.id === 4) {
+      throw new Error(`Task #${input.id} explicitly failed!`);
     }
 
-    return { result: `Processed: ${input.payload}` };
+    return { ok: true };
   },
 };
 
-const engine = new HarnessEngine(dummyRunner);
+const engine = new HarnessEngine(asyncRunner, { concurrency: 3 });
 
-const testCases: Array<{ case: TestCase; input: { payload: string } }> = [
-  {
-    case: { id: "TEST-001", name: "Successful Run", timeoutMs: 1000 },
-    input: { payload: "hello world" },
-  },
-  {
-    case: { id: "TEST-002", name: "Failing Run", timeoutMs: 1000 },
-    input: { payload: "error" },
-  },
-];
+const suite: Array<{ case: TestCase; input: { id: number; delayMs: number } }> =
+  Array.from({ length: 6 }, (_, index) => ({
+    case: {
+      id: `TASK-00${index + 1}`,
+      name: `Concurrent Task ${index + 1}`,
+      timeoutMs: 2000,
+    },
+    input: { id: index + 1, delayMs: 500 },
+  }));
 
 async function main() {
   console.log(
-    `🚀 Starting Harness Execution [Runner: ${dummyRunner.name}]...\n`,
+    `🚀 Starting Harness Execution [Runner: ${asyncRunner.name}]...\n`,
   );
-  const results = [];
+  const totalStartTime = performance.now();
 
-  for (const item of testCases) {
-    const result = await engine.runTest(item.case, item.input);
-    results.push(result);
-  }
+  // Run the all suite concurrently with the specified concurrency limit
+  const results = await engine.runSuite(suite);
+
+  const totalDuration = Math.round(performance.now() - totalStartTime);
 
   ConsoleReporter.printSummary(results);
+  console.log(`⏱️ Total Suite Execution Time: ${totalDuration} ms`);
 }
 
 main();

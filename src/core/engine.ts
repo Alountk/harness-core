@@ -1,11 +1,18 @@
 // src/core/engine.ts
 import type { TaskRunner, TestCase, TestResult } from "./types";
+import { mapConcurrent } from "../utils/concurrency";
+
+export interface EngineOptions {
+  concurrency?: number; // Optional concurrency limit for running tests
+}
 
 export class HarnessEngine<TInput, TOutput> {
   private runner: TaskRunner<TInput, TOutput>;
+  private concurrency: number;
 
-  constructor(runner: TaskRunner<TInput, TOutput>) {
+  constructor(runner: TaskRunner<TInput, TOutput>, options?: EngineOptions) {
     this.runner = runner;
+    this.concurrency = options?.concurrency ?? 1; // Default to 1 if not provided
   }
 
   async runTest(testCase: TestCase, input: TInput): Promise<TestResult> {
@@ -44,5 +51,13 @@ export class HarnessEngine<TInput, TOutput> {
         await this.runner.teardown();
       }
     }
+  }
+
+  async runSuite(
+    testSuite: Array<{ case: TestCase; input: TInput }>,
+  ): Promise<TestResult[]> {
+    return mapConcurrent(testSuite, this.concurrency, async (item) => {
+      return this.runTest(item.case, item.input);
+    });
   }
 }
