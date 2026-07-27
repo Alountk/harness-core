@@ -1,5 +1,3 @@
-// src/utils/concurrency.ts
-
 export async function mapConcurrent<T, R>(items: T[], limit: number, fn: (item: T, index: number) => Promise<R>): Promise<R[]> {
     const results: R[] = new Array(items.length);
     let currentIndex =  0;

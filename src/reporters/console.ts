@@ -1,4 +1,3 @@
-// src/reporters/console.ts
 import type { TestResult } from "../core/types";
 
 export class ConsoleReporter {

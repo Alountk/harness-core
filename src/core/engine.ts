@@ -1,4 +1,3 @@
-// src/core/engine.ts
 import type { TaskRunner, TestCase, TestResult } from "./types";
 import { mapConcurrent } from "../utils/concurrency";
 

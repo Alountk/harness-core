@@ -1,4 +1,3 @@
-// src/core/types.ts
 import { z } from "zod";
 
 export const TestCaseSchema = z.object({
@@ -16,6 +15,11 @@ export interface TestResult {
   status: "PASSED" | "FAILED" | "TIMEOUT" | "SKIPPED";
   durationMs: number;
   attempts?: number; // Number of attempts made for this test case ( 1 = without retries)
+  evalResult?: {
+    passed: boolean;
+    score?: number;
+    reason?: string;
+  };
   error?: Error;
   metrics?: Record<string, number | string>;
   logs?: string[];
