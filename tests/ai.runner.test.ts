@@ -18,8 +18,7 @@ describe("AIRunner Integration", () => {
     };
 
     const aiRunner = new AIRunner({
-      apiKey: "mock-key",
-      fetchFn: mockFetch,
+      config: { apiKey: "mock-key", fetchFn: mockFetch },
     });
 
     const engine = new HarnessEngine(aiRunner);
@@ -44,8 +43,7 @@ describe("AIRunner Integration", () => {
     };
 
     const aiRunner = new AIRunner({
-      apiKey: "mock-key",
-      fetchFn: mockFetch,
+      config: { apiKey: "mock-key", fetchFn: mockFetch },
     });
 
     const engine = new HarnessEngine(aiRunner);

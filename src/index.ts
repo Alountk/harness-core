@@ -1,22 +1,32 @@
-// Exporting the core engine and its options
+// Core Engine
 export { HarnessEngine } from "./core/engine";
 export type { EngineOptions } from "./core/engine";
 
-// Export the principal types used in the testing framework
+// Core Types
 export type { TestCase, TestResult, TaskRunner } from "./core/types";
 export { TestCaseSchema } from "./core/types";
 
-// Exporting the Schemes and fixture validation utilities
+// Fixtures
 export { StandardFixtureSchema, validateFixture } from "./fixtures/fixture";
 export type { StandardFixture } from "./fixtures/fixture";
 
-// Exporting the Reporters, starting with the ConsoleReporter
+// Reporters
 export { ConsoleReporter } from "./reporters/console";
 
-// Exporting the AI Runner and its associated types
+// AI Runners & Providers
 export { AIRunner } from "./runners/ai.runner";
-export type { AIPromptInput, AIResponseOutput, AIRunnerOptions } from "./runners/ai.runner";
+export type {
+  AIPromptInput,
+  AIResponseOutput,
+  AIRunnerOptions,
+  ProviderType,
+} from "./runners/ai.runner";
+export { OpenAIAdapter, GoogleAIStudioAdapter } from "./runners/ai/providers";
+export type { AIProviderAdapter, ProviderConfig } from "./runners/ai/providers";
 
-// Exporting the Evaluators and their types
-export { createContainsEvaluator, createJsonSchemaEvaluator } from "./evals/evaluators";
+// Evaluators
+export {
+  createContainsEvaluator,
+  createJsonSchemaEvaluator,
+} from "./evals/evaluators";
 export type { EvalResult, Evaluator } from "./evals/evaluators";
