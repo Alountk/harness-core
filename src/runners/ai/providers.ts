@@ -108,9 +108,9 @@ export class GoogleAIStudioAdapter implements AIProviderAdapter {
   constructor(config: ProviderConfig = {}) {
     this.apiKey = config.apiKey || process.env.GOOGLE_AI_API_KEY || "";
     this.baseUrl =
-      config.baseUrl || "https://api.generativelanguage.googleapis.com/v1beta2";
+      config.baseUrl || "https://generativelanguage.googleapis.com/v1beta";
     this.defaultModel =
-      config.defaultModel || "gemini-2.5-flash-preview-09-2025";
+      config.defaultModel || "gemini-2.5-flash";
     this.fetchFn = config.fetchFn || fetch;
   }
 
@@ -123,7 +123,7 @@ export class GoogleAIStudioAdapter implements AIProviderAdapter {
 
     const contents = [{ parts: [{ text: input.prompt }] }];
     const systemInstruction = input.systemPrompt
-      ? [{ parts: [{ text: input.systemPrompt }] }]
+      ? { role: "system", parts: [{ text: input.systemPrompt }] }
       : undefined;
 
     const response = await this.fetchFn(url, {
