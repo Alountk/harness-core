@@ -22,7 +22,7 @@ export type {
   AIRunnerOptions,
   ProviderType,
 } from "./runners/ai.runner";
-export { OpenAIAdapter, GoogleAIStudioAdapter } from "./runners/ai/providers";
+export { OpenAIAdapter, GoogleAIStudioAdapter, OllamaAdapter, LMStudioAdapter } from "./runners/ai/providers";
 export type { AIProviderAdapter, ProviderConfig } from "./runners/ai/providers";
 
 // Evaluators

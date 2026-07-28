@@ -110,7 +110,7 @@ export class GoogleAIStudioAdapter implements AIProviderAdapter {
     this.baseUrl =
       config.baseUrl || "https://generativelanguage.googleapis.com/v1beta";
     this.defaultModel =
-      config.defaultModel || "gemini-2.5-flash";
+      config.defaultModel || process.env.GEMINI_MODEL || "gemini-2.5-flash";
     this.fetchFn = config.fetchFn || fetch;
   }
 
@@ -172,5 +172,96 @@ export class GoogleAIStudioAdapter implements AIProviderAdapter {
         : undefined, // Google AI Studio may not provide detailed usage metrics
       raw: data, // Include the raw response for debugging or further processing
     };
+  }
+}
+
+/**
+ * Adapter for Local AI Providers. This class implements the AIProviderAdapter interface and provides a method to generate responses from a local AI model.
+ * Note: This is a placeholder implementation. Actual integration with local AI models will depend on the specific model and its API.
+ */
+
+export class OllamaAdapter implements AIProviderAdapter {
+  name = "Ollama Local AI Provider";
+  private baseUrl: string;
+  private defaultModel: string;
+  private fetchFn: typeof fetch;
+
+  constructor(config: ProviderConfig = {}) {
+    this.baseUrl =
+      config.baseUrl ||
+      process.env.LOCAL_AI_BASE_URL ||
+      "http://111.111.111.30:1234"; // Default local server URL
+    this.defaultModel =
+      config.defaultModel || process.env.OLLAMA_AI_MODEL || "llama3.2";
+    this.fetchFn = config.fetchFn || fetch;
+  }
+
+  async generateResponse(
+    input: AIPromptInput,
+    signal?: AbortSignal,
+  ): Promise<AIResponseOutput> {
+    const model = input.model || this.defaultModel;
+    const url = `${this.baseUrl}/api/generate`;
+
+    const response = await this.fetchFn(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model,
+        prompt: input.prompt,
+        system: input.systemPrompt,
+        stream: false, // Assuming we want a complete response rather than streaming
+        options: {
+          temperature: input.temperature ?? 0.7,
+        },
+      }),
+      signal,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(
+        `Local AI Request failed with status ${response.status}: ${errorText}`,
+      );
+    }
+
+    const data = (await response.json()) as {
+      response: string;
+      prompt_eval_count?: number;
+      eval_count?: number;
+    };
+
+    return {
+      text: data.response,
+      usage:
+        data.prompt_eval_count !== undefined && data.eval_count !== undefined
+          ? {
+              promptTokens: data.prompt_eval_count,
+              completionTokens: data.eval_count,
+              totalTokens: data.prompt_eval_count + data.eval_count,
+            }
+          : undefined,
+      raw: data,
+    };
+  }
+}
+
+/**
+ * Adapter for LM Studio Local Provider. This class extends the OpenAIAdapter and overrides the base URL and default model to point to a local LM Studio instance.
+ * Note: Ensure that the LM Studio server is running and accessible at the specified URL.
+ */
+export class LMStudioAdapter extends OpenAIAdapter {
+  override name = "LM Studio Local Provider";
+
+  constructor(config: ProviderConfig = {}) {
+    super({
+      ...config,
+      baseUrl:
+        config.baseUrl ||
+        process.env.LM_STUDIO_URL ||
+        "http://111.111.111.30:1234/v1",
+      defaultModel: config.defaultModel || "local-model",
+      apiKey: config.apiKey || process.env.LM_STUDIO_API_KEY || "",
+    });
   }
 }

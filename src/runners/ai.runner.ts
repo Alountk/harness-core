@@ -1,6 +1,8 @@
 import type { TaskRunner } from "../core/types";
 import {
   GoogleAIStudioAdapter,
+  LMStudioAdapter,
+  OllamaAdapter,
   OpenAIAdapter,
   type AIProviderAdapter,
   type ProviderConfig,
@@ -23,7 +25,7 @@ export interface AIResponseOutput {
   raw?: unknown; // The raw response from the AI model
 }
 
-export type ProviderType = "openai" | "gemini" | "custom";
+export type ProviderType = "openai" | "gemini" | "ollama" | "lmstudio" | "custom";
 
 export interface AIRunnerOptions {
   provider?: ProviderType; // The AI provider to use (e.g., "openai", "gemini", or "custom")
@@ -42,6 +44,12 @@ export class AIRunner implements TaskRunner<AIPromptInput, AIResponseOutput> {
       switch (options.provider) {
         case "gemini":
           this.adapter = new GoogleAIStudioAdapter(options.config);
+          break;
+        case "ollama":
+          this.adapter = new OllamaAdapter(options.config);
+          break;
+        case "lmstudio":
+          this.adapter = new LMStudioAdapter(options.config);
           break;
         case "openai":
         default:

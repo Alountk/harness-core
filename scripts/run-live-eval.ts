@@ -7,14 +7,17 @@ import {
   createJsonSchemaEvaluator,
   ConsoleReporter,
   MarkdownReporter,
+  LMStudioAdapter,
 } from "../src/index";
 
 async function main() {
-  const apiKey = process.env.GEMINI_API_KEY;
+  const geminiApiKey = process.env.GEMINI_API_KEY;
+  const lmStudioUrl = process.env.LM_STUDIO_URL || "http://localhost:1234/v1";
+  const lmStudioApiKey = process.env.LM_STUDIO_API_KEY || "";
 
-  if (!apiKey || apiKey === "tu_api_key_aqui_real") {
+  if (!geminiApiKey || geminiApiKey === "tu_api_key_aqui_real") {
     console.error(
-      "❌ ERROR: GEMINI_API_KEY no configurada. Añádela en tu archivo .env o impórtala en la terminal."
+      "❌ ERROR: GEMINI_API_KEY no configurada. Añádela en tu archivo .env o impórtala en la terminal.",
     );
     process.exit(1);
   }
@@ -23,17 +26,26 @@ async function main() {
 
   const DEFAULT_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 
-  // Instantiate the real Google Gemini adapter
+  // Adapter 1: Google Gemini Cloud
   const googleAdapter = new GoogleAIStudioAdapter({
-    apiKey,
-    defaultModel: DEFAULT_MODEL,
+    apiKey: geminiApiKey,
+    defaultModel: "gemini-2.5-flash",
   });
 
-  // Create the AIRunner with the Google Gemini adapter
-  const runner = new AIRunner({ adapter: googleAdapter });
+  // Adapter 2: LM Studio Local
+  const lmStudioAdapter = new LMStudioAdapter({
+    baseUrl: lmStudioUrl,
+    defaultModel: "local-model",
+    apiKey: lmStudioApiKey,
+  });
+
+  // Create the AIRunner
+  const googleRunner = new AIRunner({ adapter: googleAdapter });
+  const lmStudioRunner = new AIRunner({ adapter: lmStudioAdapter });
 
   // Initialize the engine with concurrency = 2
-  const engine = new HarnessEngine(runner, { concurrency: 2 });
+  const googleEngine = new HarnessEngine(googleRunner, { concurrency: 2 });
+  const lmStudioEngine = new HarnessEngine(lmStudioRunner, { concurrency: 1 });
 
   // Zod schema to validate the structured output of the AI
   const ArchitectureRecommendationSchema = z.object({
@@ -42,8 +54,8 @@ async function main() {
     estimatedTimeWeeks: z.number(),
   });
 
-  // Suite of tests with real calls
-  const suite = [
+  // Suite for Google
+  const cloudSuite = [
     {
       case: {
         id: "LIVE-GEMINI-001",
@@ -53,7 +65,8 @@ async function main() {
       input: {
         model: DEFAULT_MODEL,
         systemPrompt: "Eres un arquitecto experto en Frontend.",
-        prompt: "Explica brevemente qué es Module Federation en React y cuáles son sus ventajas clave.",
+        prompt:
+          "Explica brevemente qué es Module Federation en React y cuáles son sus ventajas clave.",
       },
       evaluator: createContainsEvaluator({
         includes: ["React", "Federation"],
@@ -76,20 +89,53 @@ async function main() {
     },
   ];
 
-  console.log(`📡 Enviando ${suite.length} consultas a Google Gemini en paralelo...\n`);
+  // Suite for LM Studio Local
+  const lmStudioSuite = [
+    {
+      case: {
+        id: "LOCAL-LMSTUDIO-001",
+        name: "LM Studio Local: Verificación de Conceptos",
+        timeoutMs: 60000, // Margen holgado para inferencia en CPU/GPU local
+        retries: 0,
+      },
+      input: {
+        systemPrompt: "Eres un desarrollador experto.",
+        prompt:
+          "Responde brevemente: ¿Qué ventajas tiene utilizar Bun sobre Node.js?",
+      },
+      evaluator: createContainsEvaluator({
+        includes: ["Bun"],
+      }),
+    },
+  ];
+
+  const allResults = [];
+
+  if (geminiApiKey && geminiApiKey !== "tu_api_key_aqui_real") {
+    console.log("📡 Ejecutando evaluación Cloud contra Google Gemini...");
+    const cloudResults = await googleEngine.runSuite(cloudSuite);
+    allResults.push(...cloudResults);
+  } else {
+    console.log("⚠️ GEMINI_API_KEY no detectada. Saltando pruebas Cloud.");
+  }
+
+  console.log(
+    `\n🏠 Ejecutando evaluación contra LM Studio en ${lmStudioUrl}...`,
+  );
+  try {
+    const lmResults = await lmStudioEngine.runSuite(lmStudioSuite);
+    allResults.push(...lmResults);
+  } catch (err) {
+    console.error(
+      `❌ Error conectando con LM Studio en ${lmStudioUrl}. Verifica que el servidor local esté iniciado.`,
+    );
+  }
+  
   const startTime = performance.now();
 
-  // execute the suite and collect results
-  const results = await engine.runSuite(suite);
+    ConsoleReporter.printSummary(allResults);
 
-  const duration = Math.round(performance.now() - startTime);
-
-  // Imprimimos los resultados en consola
-  ConsoleReporter.printSummary(results);
-  console.log(`⏱️ Tiempo total de llamada e inferencia: ${duration} ms\n`);
-
-  // Printing Markdown report for potential CI/CD integration
-  const mdReport = MarkdownReporter.generateReport(results, "Google Gemini Real-World Evaluation");
+  const mdReport = MarkdownReporter.generateReport(allResults, "Cloud Gemini vs LM Studio Local Hybrid Evaluation");
   console.log("---------------- GENERATED MARKDOWN REPORT ----------------");
   console.log(mdReport);
   console.log("-----------------------------------------------------------");
