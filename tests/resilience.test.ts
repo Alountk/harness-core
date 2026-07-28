@@ -1,4 +1,3 @@
-// tests/resilience.test.ts
 import { describe, expect, test } from "bun:test";
 import { HarnessEngine } from "../src/index";
 import type { TaskRunner } from "../src/index";

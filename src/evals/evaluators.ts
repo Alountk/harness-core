@@ -16,8 +16,8 @@ export type Evaluator = (
  */
 
 export function createContainsEvaluator(options: {
-  includes?: string;
-  excludes?: string;
+  includes?: string[];
+  excludes?: string[];
 }): Evaluator {
   return (output) => {
     const text = output.text;

@@ -1,5 +1,6 @@
-import type { TaskRunner, TestCase, TestResult } from "./types";
+import type { Evaluator } from "../evals/evaluators";
 import { mapConcurrent } from "../utils/concurrency";
+import type { TaskRunner, TestCase, TestResult } from "./types";
 
 export interface EngineOptions {
   concurrency?: number; // Optional concurrency limit for running tests
@@ -14,14 +15,17 @@ export class HarnessEngine<TInput, TOutput> {
     this.concurrency = options?.concurrency ?? 1; // Default to 1 if not provided
   }
 
-  async runTest(testCase: TestCase, input: TInput): Promise<TestResult> {
+  async runTest(
+    testCase: TestCase,
+    input: TInput,
+    evaluator?: Evaluator,
+  ): Promise<TestResult> {
     const maxRetries = testCase.retries ?? 0;
     const timeoutMs = testCase.timeoutMs ?? 5000; // Default timeout of 5 seconds
 
     let attempts = 0;
     let lastError: Error | undefined;
     const startTime = performance.now();
-    // const logs: string[] = [];
 
     while (attempts <= maxRetries) {
       attempts++;
@@ -41,7 +45,7 @@ export class HarnessEngine<TInput, TOutput> {
           }, timeoutMs);
         });
 
-        await Promise.race([
+        const output = await Promise.race([
           this.runner.execute(input, controller.signal),
           timeoutPromise,
         ]);
@@ -50,14 +54,26 @@ export class HarnessEngine<TInput, TOutput> {
           clearTimeout(timer); // Clear the timeout if the task completes in time
         }
 
+        let evalResult;
+        if (evaluator) {
+          evalResult = await evaluator(output as any);
+        }
+
         const endTime = performance.now();
         const durationMs = Math.round(endTime - startTime);
 
+        const isPassed = evalResult ? evalResult.passed : true;
+
         return {
           testId: testCase.id,
-          status: "PASSED",
+          status: isPassed ? "PASSED" : "FAILED",
           durationMs,
           attempts,
+          evalResult,
+          error:
+            !isPassed && evalResult?.reason
+              ? new Error(`Evaluation Failed: ${evalResult.reason}`)
+              : undefined,
         };
       } catch (error) {
         if (timer) clearTimeout(timer); // Clear the timeout if an error occurs
@@ -94,10 +110,10 @@ export class HarnessEngine<TInput, TOutput> {
   }
 
   async runSuite(
-    testSuite: Array<{ case: TestCase; input: TInput }>,
+    testSuite: Array<{ case: TestCase; input: TInput; evaluator?: Evaluator }>,
   ): Promise<TestResult[]> {
     return mapConcurrent(testSuite, this.concurrency, async (item) => {
-      return this.runTest(item.case, item.input);
+      return this.runTest(item.case, item.input, item.evaluator);
     });
   }
 }

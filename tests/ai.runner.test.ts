@@ -1,10 +1,9 @@
-// tests/ai.runner.test.ts
 import { describe, expect, test } from "bun:test";
 import { HarnessEngine, AIRunner } from "../src/index";
 
 describe("AIRunner Integration", () => {
   test("should correctly process AI prompts and capture responses", async () => {
-    // Simulación de respuesta de la API de IA
+    // Simulate AI API response
     const mockFetch: typeof fetch = async () => {
       return new Response(
         JSON.stringify({
@@ -24,7 +23,7 @@ describe("AIRunner Integration", () => {
     const engine = new HarnessEngine(aiRunner);
 
     const result = await engine.runTest(
-      { id: "AI-001", name: "Basic AI Greeting Test", timeoutMs: 2000 },
+      { id: "AI-001", name: "Basic AI Greeting Test", timeoutMs: 2000, retries: 0 },
       {
         systemPrompt: "You are a helpful assistant.",
         prompt: "Say hello",
@@ -37,7 +36,7 @@ describe("AIRunner Integration", () => {
   });
 
   test("should handle AI API errors gracefully and report failure", async () => {
-    // Simulación de un error 500 de la API
+    // Simulate a 500 error from the AI API
     const mockFetch: typeof fetch = async () => {
       return new Response("Internal Server Error", { status: 500 });
     };

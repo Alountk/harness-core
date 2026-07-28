@@ -38,7 +38,7 @@ describe("AI Evaluators (LLM Evals)", () => {
 
     const evaluator = createJsonSchemaEvaluator(UserSummarySchema);
 
-    // Cadena JSON válida formateada limpiamente sin comillas invertidas conflictivas
+    // Valid JSON string formatted cleanly without conflicting backticks
     const jsonPayload = JSON.stringify({
       name: "Raúl",
       role: "Senior React Developer",
@@ -52,7 +52,7 @@ describe("AI Evaluators (LLM Evals)", () => {
     const result = await evaluator(mockAiResponse);
     expect(result.passed).toBe(true);
 
-    // Respuesta JSON inválida (falta el campo experienceYears)
+    // Invalid JSON response (missing the experienceYears field)
     const badAiResponse = {
       text: '{"name": "Raúl", "role": "Senior React Developer"}',
     };
