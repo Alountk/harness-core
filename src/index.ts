@@ -13,6 +13,7 @@ export type { StandardFixture } from "./fixtures/fixture";
 // Reporters
 export { ConsoleReporter } from "./reporters/console";
 export { MarkdownReporter } from "./reporters/markdown";
+export { FileReporter } from "./reporters/file";
 
 // AI Runners & Providers
 export { AIRunner } from "./runners/ai.runner";

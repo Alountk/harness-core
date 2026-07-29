@@ -1,5 +1,7 @@
 # dependencies (bun install)
 node_modules
+# folder for local development
+reports
 
 # output
 out

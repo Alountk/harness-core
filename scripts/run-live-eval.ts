@@ -8,6 +8,7 @@ import {
   ConsoleReporter,
   MarkdownReporter,
   LMStudioAdapter,
+  FileReporter,
 } from "../src/index";
 
 async function main() {
@@ -23,6 +24,8 @@ async function main() {
   }
 
   console.log("🚀 Inicializando Harness con Google Gemini API...\n");
+
+  const previousReport = FileReporter.getLatestReport();
 
   const DEFAULT_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 
@@ -130,15 +133,31 @@ async function main() {
       `❌ Error conectando con LM Studio en ${lmStudioUrl}. Verifica que el servidor local esté iniciado.`,
     );
   }
-  
+
   const startTime = performance.now();
 
-    ConsoleReporter.printSummary(allResults);
+  ConsoleReporter.printSummary(allResults);
 
-  const mdReport = MarkdownReporter.generateReport(allResults, "Cloud Gemini vs LM Studio Local Hybrid Evaluation");
-  console.log("---------------- GENERATED MARKDOWN REPORT ----------------");
-  console.log(mdReport);
-  console.log("-----------------------------------------------------------");
+  const savedInfo = FileReporter.saveReport(
+    allResults,
+    "Cloud Gemini vs LM Studio Local Hybrid Evaluation",
+  );
+
+  console.log(`💾 Reportes guardados exitosamente:`);
+  console.log(`   - JSON: ${savedInfo.jsonPath}`);
+  console.log(`   - Markdown: ${savedInfo.mdPath}`);
+
+  // 5. Comparar tendencias históricas respecto a la ejecución anterior
+  if (previousReport) {
+    const delta = FileReporter.compareWithPrevious(allResults, previousReport);
+    if (delta) {
+      FileReporter.printTrendSummary(delta);
+    }
+  } else {
+    console.log(
+      "\n💡 Primera ejecución registrada. Las próximas ejecuciones mostrarán comparativas de tendencias.",
+    );
+  }
 }
 
 main().catch((err) => {
