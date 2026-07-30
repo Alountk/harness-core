@@ -15,7 +15,7 @@ export type Evaluator = (
 ) => Promise<EvalResult> | EvalResult;
 
 /**
- * A simple evaluator that checks if the AI response contains a specific keyword.
+ * A simple evaluator that checks whether the AI response contains a specific keyword.
  */
 
 export function createContainsEvaluator(options: {
@@ -91,8 +91,8 @@ export function createJsonSchemaEvaluator<T>(
 }
 
 export interface LLMJudgeOptions {
-  criteria: string; // The criteria or rubric for judging the AI response
-  judgeRunner: TaskRunner<AIPromptInput, AIResponseOutput>; // The runner that will be used to evaluate the AI response
+  criteria: string; // Criteria or rubric for judging the AI response
+  judgeRunner: TaskRunner<AIPromptInput, AIResponseOutput>; // Runner used to evaluate the AI response
   minPassingScore?: number; // Optional minimum score to consider the evaluation as passed
 }
 
@@ -103,8 +103,8 @@ const JudgeSchema = z.object({
 });
 
 /**
- * Evaluator "LLM-as-a-Judge": Use the model of language for evaluation.
- * This evaluator sends the AI response to another LLM (the judge) along with the evaluation criteria, and expects a structured response indicating whether the original response passed the evaluation.
+ * Evaluator "LLM-as-a-Judge": use a language model for evaluation.
+ * This evaluator sends the AI response to another LLM (the judge) together with the evaluation criteria, and expects a structured response indicating whether the original response passed the evaluation.
  */
 
 export function createLLMJudgeEvaluator(
@@ -116,23 +116,23 @@ export function createLLMJudgeEvaluator(
     const textToEvaluate =
       typeof output === "string" ? output : JSON.stringify(output ?? "");
 
-    const systemPrompt = `Eres un juez imparcial y riguroso experto en evaluar respuestas de Modelos de Lenguaje (LLMs).
-                          Tu objetivo es analizar la respuesta entregada por un modelo y evaluarla en función del criterio especificado.
-                          Debes responder ÚNICAMENTE con un objeto JSON válido con la siguiente estructura:
+    const systemPrompt = `You are an impartial and rigorous judge expert in evaluating responses from Language Models (LLMs).
+                          Your objective is to analyze the response provided by a model and evaluate it according to the specified criterion.
+                          You must respond ONLY with a valid JSON object using the following structure:
                           {
-                            "score": <número entre 0.0 y 1.0>,
-                            "passed": <booleano true/false>,
-                            "reason": "<explicación detallada y justificada del veredicto>"
+                            "score": <number between 0.0 and 1.0>,
+                            "passed": <true/false boolean>,
+                            "reason": "<detailed and well-justified explanation of the verdict>"
                           }`;
-    const prompt = `CRITERIO DE EVALUACIÓN:
+    const prompt = `EVALUATION CRITERIA:
                     ${options.criteria}
 
-                    RESPUESTA DEL MODELO A EVALUAR:
+                    MODEL RESPONSE TO EVALUATE:
                     """
                     ${textToEvaluate}
                     """
 
-                    Evalúa la respuesta según el criterio y devuelve el objeto JSON correspondiente.`;
+                    Evaluate the response according to the criterion and return the corresponding JSON object.`;
     try {
       const judgeResponse = await options.judgeRunner.execute({
         systemPrompt,
@@ -164,7 +164,7 @@ export function createLLMJudgeEvaluator(
       return {
         score: 0,
         passed: false,
-        reason: `Error al ejecutar la evaluación del LLM-Judge: ${error instanceof Error ? error.message : String(error)}`,
+        reason: `Error while running the LLM-Judge evaluation: ${error instanceof Error ? error.message : String(error)}`,
       };
     }
   };

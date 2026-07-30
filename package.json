@@ -8,7 +8,8 @@
     "start": "bun run src/index.ts",
     "test": "bun test",
     "test:watch": "bun test --watch",
-    "eval:live": "bun run scripts/run-live-eval.ts"
+    "eval:live": "bun run scripts/run-live-eval.ts",
+    "eval:arena": "bun run scripts/run-benchmark-arena.ts"
   },
   "dependencies": {
     "@types/node": "^26.1.1",

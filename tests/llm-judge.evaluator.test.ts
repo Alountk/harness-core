@@ -4,7 +4,7 @@ import type { TaskRunner } from "../src/core/types";
 import type { AIPromptInput, AIResponseOutput } from "../src/runners/ai.runner";
 
 describe("LLM-as-a-Judge Evaluator", () => {
-  test("debe aprobar cuando el Juez devuelve un score superior al umbral", async () => {
+  test("should pass when the judge returns a score above the threshold", async () => {
     const mockJudgeRunner: TaskRunner<AIPromptInput, AIResponseOutput> = {
       name: "Mock Judge",
       async execute() {
@@ -12,30 +12,30 @@ describe("LLM-as-a-Judge Evaluator", () => {
           text: JSON.stringify({
             score: 0.95,
             passed: true,
-            reason: "La explicación técnica es clara y precisa.",
+            reason: "The technical explanation is clear and precise.",
           }),
         };
       },
     };
 
     const judgeEvaluator = createLLMJudgeEvaluator({
-      criteria: "La respuesta debe ser clara y técnicamente correcta.",
+      criteria: "The response must be clear and technically correct.",
       judgeRunner: mockJudgeRunner,
       minPassingScore: 0.8,
     });
 
     const result = await judgeEvaluator(
-      "Explicación de prueba sobre TypeScript",
+      "Test explanation about TypeScript",
     );
 
     expect(result.passed).toBe(true);
     expect(result.score).toBe(0.95);
     expect(result.reason).toContain(
-      "La explicación técnica es clara y precisa",
+      "The technical explanation is clear and precise",
     );
   });
 
-  test("debe reprobar cuando el Juez asigna una puntuación inferior al umbral mínimo", async () => {
+  test("should fail when the judge assigns a score below the minimum threshold", async () => {
     const mockJudgeRunner: TaskRunner<AIPromptInput, AIResponseOutput> = {
       name: "Mock Strict Judge",
       async execute() {
@@ -44,24 +44,24 @@ describe("LLM-as-a-Judge Evaluator", () => {
             score: 0.4,
             passed: false,
             reason:
-              "La respuesta es vaga y carece de detalles de arquitectura.",
+              "The response is vague and lacks architectural details.",
           }),
         };
       },
     };
 
     const judgeEvaluator = createLLMJudgeEvaluator({
-      criteria: "Debe dar detalles profundos de arquitectura.",
+      criteria: "It must provide deep architectural details.",
       judgeRunner: mockJudgeRunner,
       minPassingScore: 0.7,
     });
 
     const result = await judgeEvaluator(
-      "Es una herramienta para hacer páginas web.",
+      "It is a tool for building web pages.",
     );
 
     expect(result.passed).toBe(false);
     expect(result.score).toBe(0.4);
-    expect(result.reason).toContain("La respuesta es vaga");
+    expect(result.reason).toContain("The response is vague");
   });
 });

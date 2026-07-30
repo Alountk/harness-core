@@ -12,7 +12,7 @@ describe("LM Studio Local Provider", () => {
         JSON.stringify({
           choices: [
             {
-              message: { content: "Respuesta de prueba desde LM Studio Local" },
+              message: { content: "Test response from Local LM Studio" },
             },
           ],
           usage: { prompt_tokens: 12, completion_tokens: 10, total_tokens: 22 },
@@ -32,7 +32,7 @@ describe("LM Studio Local Provider", () => {
 
     const result = await engine.runTest(
       { id: "LMSTUDIO-001", name: "LM Studio Unit Test", timeoutMs: 1000 },
-      { prompt: "Hola desde el harness" },
+      { prompt: "Hello from the harness" },
     );
 
     expect(result.status).toBe("PASSED");

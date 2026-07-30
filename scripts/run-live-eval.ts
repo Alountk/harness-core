@@ -19,13 +19,13 @@ async function main() {
 
   if (!geminiApiKey || geminiApiKey === "tu_api_key_aqui_real") {
     console.error(
-      "❌ ERROR: GEMINI_API_KEY no configurada. Añádela en tu archivo .env o impórtala en la terminal.",
+      "❌ ERROR: GEMINI_API_KEY is not set. Add it to your .env file or export it in the terminal.",
     );
     process.exit(1);
   }
 
   console.log(
-    "🚀 Inicializando Harness Multi-Proveedor con Evaluador LLM-as-a-Judge...\n",
+    "🚀 Initializing the multi-provider harness with an LLM-as-a-Judge evaluator...\n",
   );
 
   const previousReport = FileReporter.getLatestReport();
@@ -38,14 +38,14 @@ async function main() {
     defaultModel: "gemini-2.5-flash",
   });
 
-  // Adapter 2: LM Studio Local
+  // Adapter 2: Local LM Studio
   const lmStudioAdapter = new LMStudioAdapter({
     baseUrl: lmStudioUrl,
     defaultModel: "local-model",
     apiKey: lmStudioApiKey,
   });
 
-  // Create the AIRunner
+  // Create the AIRunner instances
   const googleRunner = new AIRunner({ adapter: googleAdapter });
   const lmStudioRunner = new AIRunner({ adapter: lmStudioAdapter });
 
@@ -53,34 +53,34 @@ async function main() {
   const googleEngine = new HarnessEngine(googleRunner, { concurrency: 2 });
   const lmStudioEngine = new HarnessEngine(lmStudioRunner, { concurrency: 1 });
 
-  // Zod schema to validate the structured output of the AI
+  // Zod schema to validate the AI's structured output
   const ArchitectureRecommendationSchema = z.object({
     architecturePattern: z.string(),
     recommendedTech: z.array(z.string()),
     estimatedTimeWeeks: z.number(),
   });
 
-  // Evaluator LLM-as-a-Judge: This evaluator will use the Google Gemini model to judge the AI's response based on specific criteria.
+  // LLM-as-a-Judge evaluator: this uses the Google Gemini model to judge the AI response against specific criteria.
   const semanticJudge = createLLMJudgeEvaluator({
     judgeRunner: googleRunner,
     minPassingScore: 0.8,
     criteria:
-      "Evalúa si la respuesta explica claramente las ventajas de velocidad, empaquetado o motor de ejecución de Bun en comparación con Node.js, manteniendo un tono profesional y sin información falsa.",
+      "Evaluate whether the response clearly explains the speed, bundling, or runtime advantages of Bun compared with Node.js, while keeping a professional tone and avoiding false information.",
   });
 
-  // Suite for Google
+  // Google suite
   const cloudSuite = [
     {
       case: {
         id: "LIVE-GEMINI-001",
-        name: "Google Gemini: Respuestas Frontend",
+        name: "Google Gemini: Frontend Responses",
         timeoutMs: 20000,
       },
       input: {
         model: DEFAULT_MODEL,
-        systemPrompt: "Eres un arquitecto experto en Frontend.",
+        systemPrompt: "You are an expert frontend architect.",
         prompt:
-          "Explica brevemente qué es Module Federation en React y cuáles son sus ventajas clave.",
+          "Briefly explain what Module Federation is in React and what its key advantages are.",
       },
       evaluator: createContainsEvaluator({
         includes: ["React", "Federation"],
@@ -89,34 +89,34 @@ async function main() {
     {
       case: {
         id: "LIVE-GEMINI-002",
-        name: "Google Gemini: Salida JSON estructurada",
+        name: "Google Gemini: Structured JSON Output",
         timeoutMs: 20000,
         retries: 1,
       },
       input: {
         model: DEFAULT_MODEL,
         systemPrompt:
-          "Devuelve ÚNICAMENTE un objeto JSON válido sin texto explicativo adicional.",
+          "Return ONLY a valid JSON object with no additional explanatory text.",
         prompt:
-          'Genera una recomendación de arquitectura para un proyecto web usando el siguiente formato JSON: {"architecturePattern": "Micro Frontends", "recommendedTech": ["React", "TypeScript", "Bun"], "estimatedTimeWeeks": 4}',
+          'Generate an architecture recommendation for a web project using the following JSON format: {"architecturePattern": "Micro Frontends", "recommendedTech": ["React", "TypeScript", "Bun"], "estimatedTimeWeeks": 4}',
       },
       evaluator: createJsonSchemaEvaluator(ArchitectureRecommendationSchema),
     },
   ];
 
-  // Suite for LM Studio Local
+  // Local LM Studio suite
   const lmStudioSuite = [
     {
       case: {
         id: "LOCAL-LMSTUDIO-001",
-        name: "LM Studio Local: Verificación de Conceptos (Contains)",
-        timeoutMs: 60000, // Margen holgado para inferencia en CPU/GPU local
+        name: "Local LM Studio: Concept Check (Contains)",
+        timeoutMs: 60000, // Generous margin for local CPU/GPU inference
         retries: 0,
       },
       input: {
-        systemPrompt: "Eres un desarrollador experto.",
+        systemPrompt: "You are an expert developer.",
         prompt:
-          "Responde brevemente: ¿Qué ventajas tiene utilizar Bun sobre Node.js?",
+          "Answer briefly: what advantages does Bun have over Node.js?",
       },
       evaluator: createContainsEvaluator({
         includes: ["Bun"],
@@ -125,14 +125,14 @@ async function main() {
     {
       case: {
         id: "LOCAL-LMSTUDIO-002",
-        name: "LM Studio Local: Evaluación Semántica (LLM-as-a-Judge)",
+        name: "Local LM Studio: Semantic Evaluation (LLM-as-a-Judge)",
         timeoutMs: 140000,
         retries: 0,
       },
       input: {
-        systemPrompt: "Eres un desarrollador senior de software.",
+        systemPrompt: "You are a senior software developer.",
         prompt:
-          "¿Por qué un equipo de desarrollo elegiría Bun sobre Node.js para un microservicio moderno?",
+          "Why would a development team choose Bun over Node.js for a modern microservice?",
       },
       evaluator: semanticJudge, // 👈  Judge Evaluator
     },
@@ -141,39 +141,39 @@ async function main() {
   const allResults = [];
 
   if (geminiApiKey && geminiApiKey !== "tu_api_key_aqui_real") {
-    console.log("📡 Ejecutando evaluación Cloud contra Google Gemini...");
+    console.log("📡 Running cloud evaluation against Google Gemini...");
     const cloudResults = await googleEngine.runSuite(cloudSuite);
     allResults.push(...cloudResults);
   } else {
-    console.log("⚠️ GEMINI_API_KEY no detectada. Saltando pruebas Cloud.");
+    console.log("⚠️ GEMINI_API_KEY not detected. Skipping cloud tests.");
   }
 
   console.log(
-    `\n🏠 Ejecutando evaluación contra LM Studio en ${lmStudioUrl}...`,
+    `\n🏠 Running evaluation against LM Studio at ${lmStudioUrl}...`,
   );
   try {
     const lmResults = await lmStudioEngine.runSuite(lmStudioSuite);
     allResults.push(...lmResults);
   } catch (err) {
     console.error(
-      `❌ Error conectando con LM Studio en ${lmStudioUrl}. Verifica que el servidor local esté iniciado.`,
+      `❌ Error connecting to LM Studio at ${lmStudioUrl}. Check that the local server is running.`,
     );
   }
 
-  // Print summary of all results and save to file
+  // Print a summary of all results and save it to disk
   ConsoleReporter.printSummary(allResults);
 
-  // Historic report saving
+  // Save the historical report
   const savedInfo = FileReporter.saveReport(
     allResults,
-    "Cloud Gemini vs LM Studio Local Hybrid Evaluation",
+    "Cloud Gemini vs Local LM Studio Hybrid Evaluation",
   );
 
-  console.log(`💾 Reportes guardados exitosamente:`);
+  console.log(`💾 Reports saved successfully:`);
   console.log(`   - JSON: ${savedInfo.jsonPath}`);
   console.log(`   - Markdown: ${savedInfo.mdPath}`);
 
-  // Compare with previous report if exists
+  // Compare with the previous report if one exists
   if (previousReport) {
     const delta = FileReporter.compareWithPrevious(allResults, previousReport);
     if (delta) {
@@ -181,11 +181,11 @@ async function main() {
     }
   } else {
     console.log(
-      "\n💡 Primera ejecución registrada. Las próximas ejecuciones mostrarán comparativas de tendencias.",
+      "\n💡 First run recorded. Future runs will show trend comparisons.",
     );
   }
 }
 
 main().catch((err) => {
-  console.error("❌ Error inesperado durante la ejecución:", err);
+  console.error("❌ Unexpected error during execution:", err);
 });

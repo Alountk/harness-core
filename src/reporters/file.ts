@@ -162,7 +162,7 @@ export class FileReporter {
     console.log(`Comparing against execution: ${delta.previousTimestamp}`);
 
     const durationSign = delta.durationDeltaMs >= 0 ? "+" : "";
-    const durationColor = delta.durationDeltaMs <= 0 ? "\x1b[32m" : "\x1b[33m"; // Verde si es más rápido
+    const durationColor = delta.durationDeltaMs <= 0 ? "\x1b[32m" : "\x1b[33m"; // Green when it is faster
     console.log(
       `⏱️ Total Latency Delta: ${durationColor}${durationSign}${delta.durationDeltaMs} ms\x1b[0m`,
     );

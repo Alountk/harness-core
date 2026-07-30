@@ -40,7 +40,7 @@ describe("AI Evaluators (LLM Evals)", () => {
 
     // Valid JSON string formatted cleanly without conflicting backticks
     const jsonPayload = JSON.stringify({
-      name: "Raúl",
+      name: "Raul",
       role: "Senior React Developer",
       experienceYears: 5,
     });
@@ -54,7 +54,7 @@ describe("AI Evaluators (LLM Evals)", () => {
 
     // Invalid JSON response (missing the experienceYears field)
     const badAiResponse = {
-      text: '{"name": "Raúl", "role": "Senior React Developer"}',
+      text: '{"name": "Raul", "role": "Senior React Developer"}',
     };
 
     const badResult = await evaluator(badAiResponse);
