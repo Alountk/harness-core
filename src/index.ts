@@ -14,6 +14,7 @@ export type { StandardFixture } from "./fixtures/fixture";
 export { ConsoleReporter } from "./reporters/console";
 export { MarkdownReporter } from "./reporters/markdown";
 export { FileReporter } from "./reporters/file";
+export { HtmlReporter } from "./reporters/html";
 
 // AI Runners & Providers
 export { AIRunner } from "./runners/ai.runner";
@@ -33,3 +34,7 @@ export {
   createLLMJudgeEvaluator,
 } from "./evals/evaluators";
 export type { EvalResult, Evaluator, LLMJudgeOptions } from "./evals/evaluators";
+
+// Config Utilities
+export { loadConfigFile, parseConfigJson, sanitizeJsonString } from "./utils/config";
+export type { HarnessConfigFile } from "./utils/config";
