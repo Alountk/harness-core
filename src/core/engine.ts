@@ -56,7 +56,7 @@ export class HarnessEngine<TInput, TOutput> {
 
         let evalResult;
         if (evaluator) {
-          evalResult = await evaluator(output as any);
+          evalResult = await evaluator(output as any, controller.signal);
         }
 
         const endTime = performance.now();

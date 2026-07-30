@@ -30,5 +30,6 @@ export type { AIProviderAdapter, ProviderConfig } from "./runners/ai/providers";
 export {
   createContainsEvaluator,
   createJsonSchemaEvaluator,
+  createLLMJudgeEvaluator,
 } from "./evals/evaluators";
-export type { EvalResult, Evaluator } from "./evals/evaluators";
+export type { EvalResult, Evaluator, LLMJudgeOptions } from "./evals/evaluators";

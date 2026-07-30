@@ -9,6 +9,7 @@ import {
   MarkdownReporter,
   LMStudioAdapter,
   FileReporter,
+  createLLMJudgeEvaluator,
 } from "../src/index";
 
 async function main() {
@@ -23,7 +24,9 @@ async function main() {
     process.exit(1);
   }
 
-  console.log("🚀 Inicializando Harness con Google Gemini API...\n");
+  console.log(
+    "🚀 Inicializando Harness Multi-Proveedor con Evaluador LLM-as-a-Judge...\n",
+  );
 
   const previousReport = FileReporter.getLatestReport();
 
@@ -57,12 +60,20 @@ async function main() {
     estimatedTimeWeeks: z.number(),
   });
 
+  // Evaluator LLM-as-a-Judge: This evaluator will use the Google Gemini model to judge the AI's response based on specific criteria.
+  const semanticJudge = createLLMJudgeEvaluator({
+    judgeRunner: googleRunner,
+    minPassingScore: 0.8,
+    criteria:
+      "Evalúa si la respuesta explica claramente las ventajas de velocidad, empaquetado o motor de ejecución de Bun en comparación con Node.js, manteniendo un tono profesional y sin información falsa.",
+  });
+
   // Suite for Google
   const cloudSuite = [
     {
       case: {
         id: "LIVE-GEMINI-001",
-        name: "Evaluación de respuesta de texto (Conceptos Frontend)",
+        name: "Google Gemini: Respuestas Frontend",
         timeoutMs: 20000,
       },
       input: {
@@ -78,8 +89,9 @@ async function main() {
     {
       case: {
         id: "LIVE-GEMINI-002",
-        name: "Evaluación de salida JSON estructurada",
-        timeoutMs: 12000,
+        name: "Google Gemini: Salida JSON estructurada",
+        timeoutMs: 20000,
+        retries: 1,
       },
       input: {
         model: DEFAULT_MODEL,
@@ -97,7 +109,7 @@ async function main() {
     {
       case: {
         id: "LOCAL-LMSTUDIO-001",
-        name: "LM Studio Local: Verificación de Conceptos",
+        name: "LM Studio Local: Verificación de Conceptos (Contains)",
         timeoutMs: 60000, // Margen holgado para inferencia en CPU/GPU local
         retries: 0,
       },
@@ -109,6 +121,20 @@ async function main() {
       evaluator: createContainsEvaluator({
         includes: ["Bun"],
       }),
+    },
+    {
+      case: {
+        id: "LOCAL-LMSTUDIO-002",
+        name: "LM Studio Local: Evaluación Semántica (LLM-as-a-Judge)",
+        timeoutMs: 140000,
+        retries: 0,
+      },
+      input: {
+        systemPrompt: "Eres un desarrollador senior de software.",
+        prompt:
+          "¿Por qué un equipo de desarrollo elegiría Bun sobre Node.js para un microservicio moderno?",
+      },
+      evaluator: semanticJudge, // 👈  Judge Evaluator
     },
   ];
 
@@ -134,10 +160,10 @@ async function main() {
     );
   }
 
-  const startTime = performance.now();
-
+  // Print summary of all results and save to file
   ConsoleReporter.printSummary(allResults);
 
+  // Historic report saving
   const savedInfo = FileReporter.saveReport(
     allResults,
     "Cloud Gemini vs LM Studio Local Hybrid Evaluation",
@@ -147,7 +173,7 @@ async function main() {
   console.log(`   - JSON: ${savedInfo.jsonPath}`);
   console.log(`   - Markdown: ${savedInfo.mdPath}`);
 
-  // 5. Comparar tendencias históricas respecto a la ejecución anterior
+  // Compare with previous report if exists
   if (previousReport) {
     const delta = FileReporter.compareWithPrevious(allResults, previousReport);
     if (delta) {
