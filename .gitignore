@@ -2,6 +2,7 @@
 node_modules
 # folder for local development
 reports
+codegen
 
 # output
 out
