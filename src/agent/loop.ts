@@ -1,10 +1,13 @@
+import * as fs from "node:fs/promises";
 import { createCodeSyntaxEvaluator } from "../evals/evaluators";
 import type { AIProviderAdapter } from "../runners/ai/providers";
+import { cleanMarkdownCode } from "./utils";
 
 export interface AgentTaskOptions {
   goal: string;
   maxIterations?: number;
   loader?: "ts" | "js" | "jsx" | "tsx";
+  outputPath?: string;
 }
 
 export interface AgentExecutionResult {
@@ -55,6 +58,15 @@ export class CodeAgent {
         );
         finalCode = rawText;
         success = true;
+
+        if (options.outputPath) {
+          // Limpiar bloques markdown si el modelo los incluyó al guardar en archivo
+          const cleanCode = cleanMarkdownCode(rawText);
+          await fs.writeFile(options.outputPath, cleanCode, "utf-8");
+          console.log(
+            `[Agent] Code successfully written to: ${options.outputPath}`,
+          );
+        }
         break;
       } else {
         console.warn(

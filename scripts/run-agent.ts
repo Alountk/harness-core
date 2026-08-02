@@ -20,6 +20,7 @@ async function main() {
     goal: "Escribe una función en TypeScript llamada 'groupBy' que agrupe los elementos de un array basándose en una función de clave, con tipado genérico estricto.",
     maxIterations: 3,
     loader: "ts",
+    outputPath: "codegen/groupBy.ts", // Ruta de salida para el código generado
   });
 
   console.log("\n================ 🏁 AGENT EXECUTION RESULT ================");
