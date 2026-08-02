@@ -1,4 +1,5 @@
 import { CodeAgent } from "../agent/loop";
+import { saveAgentReport } from "../agent/metrics";
 import { parseCliArguments } from "./cli-parser";
 import { resolveAIAdapter } from "./provider.factory";
 
@@ -29,6 +30,9 @@ async function main() {
       contextFiles: options.contextFiles,
       maxIterations: 5,
     });
+
+    const reportPath = await saveAgentReport(result, options.goal);
+    console.log(`📊 Reporte de métricas guardado en: ${reportPath}`);
 
     if (result.success) {
       console.log(
