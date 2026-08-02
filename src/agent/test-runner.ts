@@ -9,7 +9,11 @@ export type CommandExecutor = (
 ) => Promise<{ exitCode: number; stdout: string; stderr: string }>;
 
 const defaultExecutor: CommandExecutor = async (filePath: string) => {
-  const proc = Bun.spawn(["bun", "test", filePath], {
+  const normalizedPath =
+    filePath.startsWith("./") || filePath.startsWith("/")
+      ? filePath
+      : `./${filePath}`;
+  const proc = Bun.spawn(["bun", "test", normalizedPath], {
     stdout: "pipe",
     stderr: "pipe",
   });

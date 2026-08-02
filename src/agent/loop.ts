@@ -4,6 +4,7 @@ import type { AIProviderAdapter } from "../runners/ai/providers";
 import { cleanMarkdownCode } from "./utils";
 import { AgentHistory } from "./history";
 import { runCodeTests } from "./test-runner";
+import { readWorkspaceFile } from "./workspace";
 
 export interface AgentTaskOptions {
   goal: string;
@@ -11,6 +12,7 @@ export interface AgentTaskOptions {
   loader?: "ts" | "js" | "jsx" | "tsx";
   outputPath?: string;
   testPath?: string;
+  contextFiles?: string[];
   systemPrompt?: string;
 }
 
@@ -37,6 +39,16 @@ export class CodeAgent {
     const maxIterations = options.maxIterations ?? 3;
     const loader = options.loader ?? "ts";
     const syntaxEvaluator = createCodeSyntaxEvaluator({ loader });
+
+    let contextualGoal = options.goal;
+    if (options.contextFiles && options.contextFiles.length > 0) {
+      let fileContexts = "\n\nExisting Workspace Context:\n";
+      for (const filePath of options.contextFiles) {
+        const content = await readWorkspaceFile(filePath);
+        fileContexts += `--- File: ${filePath} ---\n${content}\n\n`;
+      }
+      contextualGoal += fileContexts;
+    }
 
     this.history.addUserMessage(options.goal);
     let success = false;
@@ -79,6 +91,7 @@ export class CodeAgent {
       if (options.outputPath) {
         await fs.writeFile(options.outputPath, cleanedCode, "utf-8");
       }
+      
       if (options.testPath) {
         console.log(`🧪 [Agent] Running unit tests on ${options.testPath}...`);
         const testResult = await runCodeTests(options.testPath);
