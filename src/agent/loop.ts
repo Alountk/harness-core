@@ -5,6 +5,8 @@ import { cleanMarkdownCode } from "./utils";
 import { AgentHistory } from "./history";
 import { runCodeTests } from "./test-runner";
 import { readWorkspaceFile } from "./workspace";
+import { writeWorkspaceFile } from "./tools/file-writter";
+import { parseToolCall } from "./tools/parser";
 
 export interface AgentTaskOptions {
   goal: string;
@@ -62,7 +64,7 @@ export class CodeAgent {
       );
 
       const response = await this.adapter.generateResponse({
-        systemPrompt: this.history.getMessages()[0].content,
+        systemPrompt: this.history.getMessages()[0]?.content,
         prompt: this.history
           .getMessages()
           .map((m) => `${m.role}: ${m.content}`)
@@ -73,25 +75,49 @@ export class CodeAgent {
       const rawText = response.text;
       this.history.addAssistantMessage(rawText);
 
-      const evalResult = await syntaxEvaluator(rawText);
+      const toolCall = parseToolCall(rawText);
+      if (toolCall && toolCall.tool === "writeWorkspaceFile") {
+        console.log(
+          `🛠️ [Agent] Executing tool: writeWorkspaceFile on ${toolCall.args.filePath}`,
+        );
+        const toolResult = await writeWorkspaceFile(
+          toolCall.args.filePath,
+          toolCall.args.content,
+        );
 
-      if (!evalResult.passed) {
-        console.warn(
-          `⚠️ [Agent] Syntax error: ${evalResult.reason}. Retrying...`,
-        );
-        this.history.addUserMessage(
-          `The previous code had a syntax error: ${evalResult.reason}. Please fix it.`,
-        );
-        continue;
+        if (!toolResult.success) {
+          this.history.addUserMessage(
+            `Tool execution failed: ${toolResult.message}. Please try again.`,
+          );
+          continue;
+        }
+
+        // Si especificaron un outputPath por CLI y coincide o queremos usarlo
+        finalCode = toolCall.args.content;
+      } else {
+        // Fallback al comportamiento clásico por si devuelve código plano en markdown
+        const evalResult = await syntaxEvaluator(rawText);
+
+        if (!evalResult.passed) {
+          console.warn(
+            `⚠️ [Agent] Syntax error: ${evalResult.reason}. Retrying...`,
+          );
+          this.history.addUserMessage(
+            `The previous code had a syntax error: ${evalResult.reason}. Please fix it.`,
+          );
+          continue;
+        }
+
+        console.log(`✅ [Agent] Syntax check passed!`);
+        const cleanedCode = cleanMarkdownCode(rawText);
+
+        if (options.outputPath) {
+          await writeWorkspaceFile(options.outputPath, cleanedCode);
+          finalCode = cleanedCode;
+        }
       }
 
-      console.log(`✅ [Agent] Syntax check passed!`);
-      const cleanedCode = cleanMarkdownCode(rawText);
-
-      if (options.outputPath) {
-        await fs.writeFile(options.outputPath, cleanedCode, "utf-8");
-      }
-      
+      // 2. Validación de tests unitarios
       if (options.testPath) {
         console.log(`🧪 [Agent] Running unit tests on ${options.testPath}...`);
         const testResult = await runCodeTests(options.testPath);
@@ -106,7 +132,6 @@ export class CodeAgent {
         console.log(`🎉 [Agent] All unit tests passed successfully!`);
       }
 
-      finalCode = cleanedCode;
       success = true;
       break;
     }
