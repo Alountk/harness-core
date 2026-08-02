@@ -1,4 +1,5 @@
 import type { Evaluator } from "../evals/evaluators";
+import type { AIResponseOutput } from "../runners/ai.runner";
 import { mapConcurrent } from "../utils/concurrency";
 import type { TaskRunner, TestCase, TestResult } from "./types";
 
@@ -45,31 +46,44 @@ export class HarnessEngine<TInput, TOutput> {
           }, timeoutMs);
         });
 
-        const output = await Promise.race([
+        const output = (await Promise.race([
           this.runner.execute(input, controller.signal),
           timeoutPromise,
-        ]);
+        ])) as AIResponseOutput;
 
         if (timer) {
           clearTimeout(timer); // Clear the timeout if the task completes in time
         }
 
-        let evalResult;
-        if (evaluator) {
-          evalResult = await evaluator(output as any, controller.signal);
-        }
-
         const endTime = performance.now();
         const durationMs = Math.round(endTime - startTime);
 
+        let evalResult;
+        if (evaluator) {
+          evalResult = await evaluator(output as any, controller.signal, {
+            durationMs,
+            usage: output?.usage,
+          });
+        }
+
         const isPassed = evalResult ? evalResult.passed : true;
+
+        const mergedDetails = {
+          ...(typeof evalResult?.details === "object" &&
+          evalResult?.details !== null
+            ? evalResult.details
+            : {}),
+          usage: output?.usage,
+        };
 
         return {
           testId: testCase.id,
           status: isPassed ? "PASSED" : "FAILED",
           durationMs,
           attempts,
-          evalResult,
+          evalResult: evalResult
+            ? { ...evalResult, details: mergedDetails }
+            : { score: 1, passed: true, details: { usage: output?.usage } },
           error:
             !isPassed && evalResult?.reason
               ? new Error(`Evaluation Failed: ${evalResult.reason}`)

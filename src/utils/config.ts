@@ -16,10 +16,10 @@ export interface HarnessConfigFile {
  */
 export function sanitizeJsonString(rawJson: string): string {
   return rawJson
-    .replace(/^\uFEFF/, "") // Elimina BOM UTF-8
-    .replace(/\/\*[\s\S]*?\*\//g, "") // Elimina comentarios /* ... */
-    .replace(/(?<!:)\/\/.*/g, "") // Elimina // solo si NO va precedido de ":" (ej. http://)
-    .replace(/,\s*([\}\]])/g, "$1"); // Elimina comas descolgadas
+    .replace(/^\uFEFF/, "") // Remove UTF-8 BOM
+    .replace(/\/\*[\s\S]*?\*\//g, "") // Remove comments /* ... */
+    .replace(/(?<!:)\/\/.*/g, "") // Remove // only if it is not preceded by ':' (e.g. http://)
+    .replace(/,\s*([\}\]])/g, "$1"); // Remove trailing commas
 }
 
 /**
@@ -49,7 +49,7 @@ export function loadConfigFile(
     return parseConfigJson(content);
   } catch (err) {
     console.warn(
-      `⚠️ No se pudo parsear ${configPath}:`,
+      `⚠️ Could not parse ${configPath}:`,
       err instanceof Error ? err.message : String(err),
     );
     return {};

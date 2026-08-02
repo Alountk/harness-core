@@ -11,10 +11,11 @@ import {
   HtmlReporter,
   loadConfigFile,
   type TestResult,
+  createCodeSyntaxEvaluator,
 } from "../src/index";
 
 async function main() {
-  // 1. Parsear argumentos de la línea de comandos (CLI flags)
+  // 1. Parse command-line arguments (CLI flags)
   const { values } = parseArgs({
     args: Bun.argv.slice(2),
     options: {
@@ -28,12 +29,12 @@ async function main() {
     strict: false,
   });
 
-  // 2. Cargar archivo de configuración tolerante a comentarios y comas descolgadas
+  // 2. Load a configuration file that tolerates comments and trailing commas
   const fileConfig = loadConfigFile(
     values.config ? String(values.config) : "harness.config.json",
   );
 
-  // 3. Resolución de jerarquía de valores: CLI Flag > Archivo Config > Variable de Entorno > Valor por Defecto
+  // 3. Resolve value precedence: CLI flag > config file > environment variable > default
   const lmStudioUrl =
     (values.url as string) ||
     fileConfig.url ||
@@ -60,7 +61,7 @@ async function main() {
     ? parseInt(String(values.concurrency), 10)
     : fileConfig.concurrency || 1;
 
-  // Lista de modelos a competir
+  // List of models to compete
   let rawModelsList: string[] = [];
   if (values.models) {
     rawModelsList = String(values.models)
@@ -76,17 +77,17 @@ async function main() {
     ];
   }
 
-  console.log("⚔️  INICIANDO LOCAL BENCHMARK ARENA (Configuración Dinámica)\n");
-  console.log(`📡 URL Servidor: ${lmStudioUrl}`);
-  console.log(`⚖️ Modelo Juez: ${judgeModelName}`);
+  console.log("⚔️  INITIATING LOCAL BENCHMARK ARENA (Dynamic Configuration)\n");
+  console.log(`📡 Server URL: ${lmStudioUrl}`);
+  console.log(`⚖️ Judge Model: ${judgeModelName}`);
   console.log(
-    `⏱️ Timeout por test: ${defaultTimeoutMs}ms | Concurrencia: ${concurrency}`,
+    `⏱️ Timeout by test: ${defaultTimeoutMs}ms | Concurrency: ${concurrency}`,
   );
-  console.log(`🤖 Modelos en competencia: ${rawModelsList.join(", ")}\n`);
+  console.log(`🤖 Competing Models: ${rawModelsList.join(", ")}\n`);
 
-  // 4. Instanciar dinámicamente los competidores
+  // 4. Instantiate competitors dynamically
   const competitors = rawModelsList.map((modelId) => {
-    // Generar un nombre corto para la tabla del Leaderboard
+    // Generate a short name for the leaderboard table
     const shortName = modelId.includes("/") ? modelId.split("/")[1] : modelId;
 
     const runner = new AIRunner({
@@ -105,7 +106,7 @@ async function main() {
     };
   });
 
-  // 5. Instanciar el modelo Juez
+  // 5. Instantiate the judge model
   const judgeRunner = new AIRunner({
     adapter: new LMStudioAdapter({
       baseUrl: lmStudioUrl,
@@ -118,7 +119,7 @@ async function main() {
     judgeRunner,
     minPassingScore: 0.8,
     criteria:
-      "Evalúa si la respuesta explica de manera precisa, concisa y sin alucinaciones las ventajas clave de Bun sobre Node.js.",
+      "Evaluate if the response explains accurately, concisely, and without hallucinations the key advantages of Bun over Node.js.",
   });
 
   const JsonSchema = z.object({
@@ -127,48 +128,68 @@ async function main() {
     estimatedTimeWeeks: z.number(),
   });
 
-  // 6. Matriz de Prompts Idénticos (Benchmark Cases)
+  // 6. Matrix of identical prompts (benchmark cases)
   const baseBenchmarkCases = [
     {
       id: "BENCH-001",
-      name: "Explicación Técnica (LLM-as-a-Judge)",
+      name: "Technical Explanation (LLM-as-a-Judge)",
       input: {
-        systemPrompt: "Eres un desarrollador experto.",
+        systemPrompt: "You are an expert developer.",
         prompt:
-          "¿Qué ventajas clave ofrece utilizar Bun frente a Node.js en proyectos modernos?",
+          "What are the key advantages of using Bun over Node.js in modern projects?",
       },
       evaluator: semanticJudge,
     },
     {
       id: "BENCH-002",
-      name: "Generación de JSON Estructurado (Zod)",
+      name: "Structured JSON Generation (Zod)",
       input: {
         systemPrompt:
-          "Devuelve ÚNICAMENTE un objeto JSON válido sin bloques markdown ni texto adicional.",
+          "Return ONLY a valid JSON object without markdown blocks or any additional text.",
         prompt:
-          'Genera un JSON con este formato exacto: {"architecturePattern": "Microfrontends", "recommendedTech": ["React", "TypeScript"], "estimatedTimeWeeks": 4}',
+          'Generate a JSON with this exact format: {"architecturePattern": "Microfrontends", "recommendedTech": ["React", "TypeScript"], "estimatedTimeWeeks": 4}',
       },
       evaluator: createJsonSchemaEvaluator(JsonSchema),
     },
     {
       id: "BENCH-003",
-      name: "Inclusión de Conceptos Clave (Heurístico)",
+      name: "Inclusion of Key Concepts (Heuristic)",
       input: {
-        systemPrompt: "Eres un arquitecto Frontend.",
+        systemPrompt: "You are a Frontend architect.",
         prompt:
-          "Explica brevemente qué es Module Federation y cuál es su relación con React.",
+          "Explain briefly what Module Federation is and its relationship with React.",
       },
       evaluator: createContainsEvaluator({ includes: ["React", "Federation"] }),
+    },
+    {
+      id: "BENCH-004",
+      name: "Valid TypeScript Code Generation (Syntax)",
+      input: {
+        systemPrompt:
+          "You are an expert TypeScript developer. Return only the code inside a markdown block.",
+        prompt:
+          "Write a generic TypeScript function called 'debounce' that receives a function and a wait time, with proper types.",
+      },
+      evaluator: createCodeSyntaxEvaluator({ loader: "ts" }),
+    },
+    {
+      id: "BENCH-005",
+      name: "Valid TypeScript Code Generation (Syntax)",
+      input: {
+        systemPrompt: "You are an expert TypeScript developer. Return only the code inside a markdown block.",
+        prompt: "Write a generic TypeScript utility function called 'debounce' that receives a callback and a wait time, with proper types.",
+      },
+      evaluator: createCodeSyntaxEvaluator({ loader: "ts" }),
     },
   ];
 
   const arenaLeaderboard: Record<string, TestResult[]> = {};
   const allFullResults: TestResult[] = [];
 
-  // 7. Ejecutar la matriz de pruebas contra cada modelo
+  // 7. Run the benchmark matrix against each model
   for (const competitor of competitors) {
     console.log(
-      `\n🏃 Ejecutando Benchmark contra modelo local: ${competitor.name}...`,
+      `\n🏃 Executing Benchmark against local model: ${competitor.name}...`,
     );
 
     const suite = baseBenchmarkCases.map((b) => ({
@@ -186,11 +207,11 @@ async function main() {
       arenaLeaderboard[competitor.name] = results;
       allFullResults.push(...results);
     } catch (err) {
-      console.error(`❌ Error ejecutando en ${competitor.name}:`, err);
+      console.error(`❌ Error in ${competitor.name}:`, err);
     }
   }
 
-  // 8. Imprimir Leaderboard en Consola
+  // 8. Print the leaderboard to the console
   console.log(
     "\n================ 🏆 LOCAL MODEL ARENA LEADERBOARD 🏆 ================",
   );
@@ -201,7 +222,7 @@ async function main() {
     `| :--- | :--- | ${competitors.map(() => ":---:").join(" | ")} |`,
   );
 
-  const baseTestIds = ["BENCH-001", "BENCH-002", "BENCH-003"];
+  const baseTestIds = ["BENCH-001", "BENCH-002", "BENCH-003", "BENCH-004", "BENCH-005"];
 
   for (const baseId of baseTestIds) {
     const statusRow = competitors.map((c) => {
@@ -239,7 +260,7 @@ async function main() {
     });
 
     console.log(`| **${baseId}** | **Status** | ${statusRow.join(" | ")} |`);
-    console.log(`| | **Latencia** | ${timeRow.join(" | ")} |`);
+    console.log(`| | **Latency** | ${timeRow.join(" | ")} |`);
     console.log(`| | **Eval Score** | ${scoreRow.join(" | ")} |`);
   }
   console.log(
@@ -256,12 +277,12 @@ async function main() {
     "Local Homelab Models Arena Benchmark",
   );
 
-  console.log(`💾 Reportes persistidos:`);
+  console.log(`💾 Saved reports:`);
   console.log(`   - JSON: ${savedInfo.jsonPath}`);
   console.log(`   - Markdown: ${savedInfo.mdPath}`);
   console.log(`   - Dashboard HTML: ${htmlPath}`);
 }
 
 main().catch((err) => {
-  console.error("❌ Error en la ejecución del Arena Local:", err);
+  console.error("❌ Error while running the local arena:", err);
 });

@@ -32,6 +32,8 @@ export {
   createContainsEvaluator,
   createJsonSchemaEvaluator,
   createLLMJudgeEvaluator,
+  createCodeSyntaxEvaluator,
+  createLatencyEvaluator,
 } from "./evals/evaluators";
 export type { EvalResult, Evaluator, LLMJudgeOptions } from "./evals/evaluators";
 

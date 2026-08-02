@@ -1,31 +1,31 @@
 # AI Evaluation Harness Engine
 
-Arnes de pruebas para evaluaciones de modelos de lenguaje (LLM Evals), construido con TypeScript y Bun.
+A test harness for evaluating language model (LLM) outputs, built with TypeScript and Bun.
 
-Permite ejecutar suites de pruebas contra distintos proveedores (OpenAI, Google AI Studio/Gemini, Ollama y LM Studio), aplicar evaluadores heuristicos y generar reportes de resultados.
+It allows you to run test suites against different providers (OpenAI, Google AI Studio/Gemini, Ollama, and LM Studio), apply heuristic evaluators, and generate result reports.
 
-## Caracteristicas
+## Features
 
-- Ejecucion concurrente configurable.
-- Timeout por caso de prueba con cancelacion via AbortController.
-- Reintentos por test case para escenarios inestables.
-- Adaptadores de proveedores AI con una interfaz comun.
-- Evaluadores incluidos:
-  - Validacion por palabras incluidas/excluidas.
-  - Validacion de salida JSON con esquemas Zod.
-- Reporte por consola y generacion de reporte en Markdown.
+- Configurable concurrent execution.
+- Per-test timeout with cancellation via AbortController.
+- Retries per test case for unstable scenarios.
+- AI provider adapters with a common interface.
+- Included evaluators:
+  - Validation by included/excluded keywords.
+  - JSON output validation with Zod schemas.
+- Console reporting and Markdown report generation.
 
-## Requisitos
+## Requirements
 
 - Bun 1.0+
 
-## Instalacion
+## Installation
 
 ```bash
 bun install
 ```
 
-## Scripts disponibles
+## Available Scripts
 
 ```bash
 bun run dev
@@ -35,46 +35,46 @@ bun run test:watch
 bun run eval:live
 ```
 
-## Configuracion de entorno (.env)
+## Environment Configuration (.env)
 
-Puedes crear un archivo .env en la raiz del proyecto. Bun lo carga automaticamente.
+You can create an .env file in the project root. Bun loads it automatically.
 
-Variables comunes:
+Common variables:
 
 ```env
-# Evaluacion en vivo (scripts/run-live-eval.ts)
-GEMINI_API_KEY="tu_api_key"
+# Live evaluation (scripts/run-live-eval.ts)
+GEMINI_API_KEY="your_api_key"
 GEMINI_MODEL="gemini-2.5-flash"
 LM_STUDIO_URL="http://localhost:1234/v1"
 LM_STUDIO_API_KEY="sk-lm-token"
 
-# Adaptadores genericos (opcionales)
-OPENAI_API_KEY="tu_openai_key"
-GOOGLE_AI_API_KEY="tu_google_ai_studio_key"
+# Generic adapters (optional)
+OPENAI_API_KEY="your_openai_key"
+GOOGLE_AI_API_KEY="your_google_ai_studio_key"
 LOCAL_AI_BASE_URL="http://localhost:11434"
 OLLAMA_AI_MODEL="llama3.2"
 ```
 
-## Uso rapido
+## Quick Start
 
-### 1) Ejecutar tests
+### 1) Run tests
 
 ```bash
 bun test
 ```
 
-### 2) Ejecutar evaluacion en vivo
+### 2) Run a live evaluation
 
 ```bash
 bun run eval:live
 ```
 
-Este script ejecuta una suite hibrida:
+This script runs a hybrid suite:
 
-- Google AI Studio (Gemini) en la nube.
-- LM Studio en local.
+- Google AI Studio (Gemini) in the cloud.
+- LM Studio locally.
 
-## Ejemplo de uso
+## Example Usage
 
 ```ts
 import { z } from "zod";
@@ -105,12 +105,12 @@ const results = await engine.runSuite([
   {
     case: {
       id: "EVAL-001",
-      name: "Respuesta JSON estructurada",
+      name: "Structured JSON Response",
       timeoutMs: 30000,
       retries: 0,
     },
     input: {
-      systemPrompt: "Devuelve un JSON valido.",
+      systemPrompt: "Return a valid JSON object.",
       prompt: '{"topic":"Refactor Backend","priority":"HIGH"}',
     },
     evaluator: createJsonSchemaEvaluator(RecommendationSchema),
@@ -119,11 +119,11 @@ const results = await engine.runSuite([
 
 ConsoleReporter.printSummary(results);
 
-const markdown = MarkdownReporter.generateReport(results, "Suite Local");
+const markdown = MarkdownReporter.generateReport(results, "Local Suite");
 console.log(markdown);
 ```
 
-## Estructura del proyecto
+## Project Structure
 
 ```text
 .
@@ -152,12 +152,12 @@ console.log(markdown);
 └── README.md
 ```
 
-## Nota sobre reportes historicos
+## Note on Historical Reports
 
-El archivo src/reporters/file.ts incluye utilidades para persistencia y comparativa historica (trend analysis).
+The file [src/reporters/file.ts](src/reporters/file.ts) includes utilities for persistence and historical comparison (trend analysis).
 
-Actualmente no esta reexportado desde src/index.ts, por lo que se usa mediante import directo interno del repositorio.
+It is not re-exported from [src/index.ts](src/index.ts), so it is used through an internal repository import.
 
-## Licencia
+## License
 
 MIT

@@ -9,9 +9,18 @@ export interface EvalResult {
   details?: unknown; // Optional additional details about the evaluation result
 }
 
-export type Evaluator = (
-  output: AIResponseOutput,
-  signal?: AbortSignal
+// export type Evaluator = (
+//   output: AIResponseOutput,
+//   signal?: AbortSignal,
+// ) => Promise<EvalResult> | EvalResult;
+
+export type Evaluator<TOutput = unknown> = (
+  output: TOutput,
+  signal?: AbortSignal,
+  executionMetadata?: {
+    durationMs?: number;
+    usage?: { totalTokens?: number; completionTokens?: number };
+  },
 ) => Promise<EvalResult> | EvalResult;
 
 /**
@@ -107,9 +116,7 @@ const JudgeSchema = z.object({
  * This evaluator sends the AI response to another LLM (the judge) together with the evaluation criteria, and expects a structured response indicating whether the original response passed the evaluation.
  */
 
-export function createLLMJudgeEvaluator(
-  options: LLMJudgeOptions,
-): Evaluator {
+export function createLLMJudgeEvaluator(options: LLMJudgeOptions): Evaluator {
   const minScore = options.minPassingScore ?? 0.7;
 
   return async (output: unknown, signal?: AbortSignal): Promise<EvalResult> => {
@@ -134,11 +141,14 @@ export function createLLMJudgeEvaluator(
 
                     Evaluate the response according to the criterion and return the corresponding JSON object.`;
     try {
-      const judgeResponse = await options.judgeRunner.execute({
-        systemPrompt,
-        prompt,
-        temperature: 0.1, // Low temperature for deterministic output
-      }, signal);
+      const judgeResponse = await options.judgeRunner.execute(
+        {
+          systemPrompt,
+          prompt,
+          temperature: 0.1, // Low temperature for deterministic output
+        },
+        signal,
+      );
 
       let rawResponse = judgeResponse.text.trim();
       if (rawResponse.startsWith("```json")) {
@@ -167,5 +177,129 @@ export function createLLMJudgeEvaluator(
         reason: `Error while running the LLM-Judge evaluation: ${error instanceof Error ? error.message : String(error)}`,
       };
     }
+  };
+}
+
+export function createCodeSyntaxEvaluator(
+  options: {
+    loader?: "ts" | "js" | "jsx" | "tsx";
+  } = {},
+): Evaluator {
+  const loader = options.loader ?? "ts";
+
+  return (output: unknown): EvalResult => {
+    let rawText = "";
+
+    if (typeof output === "string") {
+      rawText = output;
+    } else if (typeof output === "object" && output !== null) {
+      const casted = output as { text?: string };
+      rawText =
+        typeof casted.text === "string" ? casted.text : JSON.stringify(output);
+    }
+
+    const firstBacktick = rawText.indexOf("```");
+    let codeToValidate = rawText;
+
+    if (firstBacktick !== -1) {
+      const lastBacktick = rawText.lastIndexOf("```");
+      if (lastBacktick > firstBacktick) {
+        const extracted = rawText.substring(firstBacktick, lastBacktick);
+        const firstNewLine = extracted.indexOf("\n");
+        if (firstNewLine !== -1) {
+          codeToValidate = extracted.substring(firstNewLine + 1).trim();
+        }
+      }
+    }
+
+    if (!codeToValidate) {
+      return {
+        score: 0,
+        passed: false,
+        reason:
+          "No valid code block was found to evaluate syntactically.",
+      };
+    }
+
+    try {
+      const transpiler = new Bun.Transpiler({ loader });
+      transpiler.transformSync(codeToValidate);
+
+      return {
+        score: 1,
+        passed: true,
+      };
+    } catch (error) {
+      return {
+        score: 0,
+        passed: false,
+        reason:
+          "Code Syntax Error (" +
+          loader +
+          "): " +
+          (error instanceof Error ? error.message : String(error)),
+      };
+    }
+  };
+}
+
+export interface LatencyEvaluatorOptions {
+  maxDurationMs: number; // Maximum allowed duration in milliseconds
+  minTokensPerSecond?: number; // Optional minimum tokens per second to consider the evaluation as passed
+}
+
+/**
+ * Evaluator for latency and performance. It checks if the AI response was generated within a specified time limit and optionally checks the tokens per second rate.
+ */
+
+export function createLatencyEvaluator(
+  options: LatencyEvaluatorOptions,
+): Evaluator {
+  return (
+    output: unknown,
+    signal?: AbortSignal,
+    executionMetadata?: {
+      durationMs?: number;
+      usage?: { totalTokens?: number; completionTokens?: number };
+    },
+  ): EvalResult => {
+    const durationMs = executionMetadata?.durationMs ?? 0;
+    const tokens =
+      executionMetadata?.usage?.completionTokens ||
+      executionMetadata?.usage?.totalTokens ||
+      0;
+
+    if (
+      options.maxDurationMs !== undefined &&
+      durationMs > options.maxDurationMs
+    ) {
+      return {
+        score: 0,
+        passed: false,
+        reason: `Response took too long: ${durationMs}ms (max allowed: ${options.maxDurationMs}ms)`,
+      };
+    }
+
+    if (
+      options.minTokensPerSecond !== undefined &&
+      durationMs > 0 &&
+      tokens > 0
+    ) {
+      const seconds = durationMs / 1000;
+      const tokensPerSecond = tokens / seconds;
+
+      if (tokensPerSecond < options.minTokensPerSecond) {
+        return {
+          score: tokensPerSecond / options.minTokensPerSecond,
+          passed: false,
+          reason: `Tokens per second too low: ${tokensPerSecond.toFixed(2)} (min required: ${options.minTokensPerSecond})`,
+        };
+      }
+    }
+    return {
+      score: 1,
+      passed: true,
+      reason: `Response generated in ${durationMs}ms with ${tokens} tokens.`,
+    };
   };
 }

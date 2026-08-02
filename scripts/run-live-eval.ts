@@ -17,7 +17,7 @@ async function main() {
   const lmStudioUrl = process.env.LM_STUDIO_URL || "http://localhost:1234/v1";
   const lmStudioApiKey = process.env.LM_STUDIO_API_KEY || "";
 
-  if (!geminiApiKey || geminiApiKey === "tu_api_key_aqui_real") {
+  if (!geminiApiKey || geminiApiKey === "your_api_key_here") {
     console.error(
       "❌ ERROR: GEMINI_API_KEY is not set. Add it to your .env file or export it in the terminal.",
     );
@@ -140,7 +140,7 @@ async function main() {
 
   const allResults = [];
 
-  if (geminiApiKey && geminiApiKey !== "tu_api_key_aqui_real") {
+  if (geminiApiKey && geminiApiKey !== "your_api_key_here") {
     console.log("📡 Running cloud evaluation against Google Gemini...");
     const cloudResults = await googleEngine.runSuite(cloudSuite);
     allResults.push(...cloudResults);

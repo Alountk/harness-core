@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { parseConfigJson } from "../src/utils/config";
 
 describe("Config Loader Utility", () => {
-  test("debe parsear un JSON válido estándar", () => {
+  test("should parse a standard valid JSON payload", () => {
     const raw = JSON.stringify({
       url: "http://localhost:1234/v1",
       timeoutMs: 60000,
@@ -15,13 +15,13 @@ describe("Config Loader Utility", () => {
     expect(parsed.models).toEqual(["model-a", "model-b"]);
   });
 
-  test("debe limpiar comentarios JS (// y /* */) y parsear correctamente", () => {
+  test("should strip JavaScript comments and parse correctly", () => {
     const rawWithComments = `
-      // Configuración de Homelab
+      // Homelab configuration
       {
-        /* Servidor local */
+        /* Local server */
         "url": "http://111.111.111.30:1234/v1",
-        "judgeModel": "qwen2.5-7b-instruct" // Modelo para juzgar
+        "judgeModel": "qwen2.5-7b-instruct" // Judge model
       }
     `;
 
@@ -30,7 +30,7 @@ describe("Config Loader Utility", () => {
     expect(parsed.judgeModel).toBe("qwen2.5-7b-instruct");
   });
 
-  test("debe soportar comas finales descolgadas (trailing commas)", () => {
+  test("should support trailing commas", () => {
     const rawWithTrailingCommas = `
       {
         "url": "http://localhost:1234/v1",
@@ -47,7 +47,7 @@ describe("Config Loader Utility", () => {
     expect(parsed.models).toHaveLength(2);
   });
 
-  test("debe manejar BOM UTF-8 sin arrojar excepción", () => {
+  test("should handle UTF-8 BOM without throwing", () => {
     const rawWithBOM = "\uFEFF" + JSON.stringify({ concurrency: 2 });
     const parsed = parseConfigJson(rawWithBOM);
     expect(parsed.concurrency).toBe(2);

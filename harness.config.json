@@ -7,21 +7,31 @@
     "google/gemma-4-e4b",
     "qwen2.5-coder-7b-instruct",
     "qwen3.5-4b-super-coder"
+  ],
+  "modelsCoder": [
+    "qwen2.5-coder-7b-instruct",
+    "qwen3.5-4b-super-coder"
+  ],
+  "modelsNonCoder": [
+    "google/gemma-4-e4b"
+  ],
+  "modelsPicture": [
+    "google/gemma-4-e4b"
   ]
 }
 
 // ---
 
-// ### Modos de uso desde la terminal
+// ### Usage modes from the terminal
 
-// 1. **Usar la configuración por defecto o `harness.config.json`:**
+// 1. **Use the default configuration or `harness.config.json`:**
 //   ```bash
 //   bun run eval:arena
 //
-// 2. **Probar solo 2 modelos específicos desde la CLI:**
+// 2. **Test only 2 specific models from the CLI:**
 //   ```bash
 //   bun run eval:arena --models=google/gemma-4-e4b,qwen2.5-coder-7b-instruct
 //
-// 3. **Ajustar el tiempo de timeout y definir el modelo Juez:**
+// 3. **Adjust the timeout and set the judge model:**
 //   ```bash
 //   bun run eval:arena --judge=local-model --timeout=90000
